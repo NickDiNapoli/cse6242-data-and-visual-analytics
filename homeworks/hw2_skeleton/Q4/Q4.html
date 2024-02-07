@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Games Rating: 2015 - 2019</title>
+  <meta charset="utf-8">
+  <style>
+    /* Define CSS rules here if needed */
+  </style>
+</head>
+
+<body>
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+
+  <!-- Create an SVG element for the line chart -->
+  <svg id="line_chart" width="800" height="500">
+    <!-- Create text elements for the x and y axis labels -->
+    <g id="container">
+      <!-- Create a group for the lines -->
+      <g id="lines"></g>
+
+      <!-- Create a group for the x-axis lines -->
+      <g id="x-axis-lines"></g>
+
+      <!-- Create a group for the y-axis lines -->
+      <g id="y-axis-lines"></g>
+
+      <!-- Create a group for the circles -->
+      <g id="circles"></g>
+
+      <!-- Create a text element for the line chart title -->
+      <text id="line_chart_title" x="400" y="20" text-anchor="middle">Line Chart Title</text>
+
+      <!-- Create a text element for the credit -->
+      <text id="credit" x="780" y="490" text-anchor="end">ndinapoli6</text>
+
+      <!-- Create a group for the legend -->
+      <g id="legend"></g>
+
+      <!-- Create text elements for the x and y axis labels -->
+      <text id="x-axis-label" x="400" y="480" text-anchor="middle">Rating</text>
+      <text id="y-axis-label" x="-250" y="10" text-anchor="middle" transform="rotate(-90)">Count</text>
+    </g>
+  </svg>
+
+  <script>
+    // Define the dimensions and margins for the line chart
+    const margin = { top: 40, right: 40, bottom: 40, left: 40 };
+    const width = 800 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+
+    // Append the SVG element to the body of the page
+    const svg = d3.select("body")
+      .append("svg")
+      .attr("id", "line_chart")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("id", "container")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Fetch the data
+    const pathToCsv = "average-rating.csv";
+
+    // Load and format the data
+    d3.dsv(",", pathToCsv, function (d) {
+      return {
+        year: +d.year,
+        average_rating: +d.average_rating,
+        users_rated: +d.users_rated
+      };
+    }).then(function (data) {
+      console.log(data);
+
+      // Group data by year and rating, and calculate the count for each combination
+      const groupedData = d3.nest()
+        .key(d => d.year)
+        .key(d => Math.floor(d.average_rating)) // Round down rating values
+        .rollup(values => values.length)
+        .entries(data);
+
+      // Create a color scale for lines
+      const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+      // Define x and y scales
+      const xScale = d3.scaleLinear()
+        .domain([0, 10]) // Ratings range from 0 to 10
+        .range([0, width]);
+
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(groupedData, d => d3.max(d.values, v => v.value))])
+        .nice()
+        .range([height, 0]);
+
+      // Define line generator
+      const line = d3.line()
+        .x(d => xScale(+d.key))
+        .y(d => yScale(d.value));
+
+      // Add lines to the chart
+      const lines = svg.select("#lines")
+        .selectAll(".line")
+        .data(groupedData)
+        .enter()
+        .append("path")
+        .attr("class", "line")
+        .attr("d", d => line(d.values))
+        .style("stroke", (d, i) => colorScale(i))
+        .style("fill", "none");
+
+      // Add x-axis
+      svg.select("#x-axis-lines")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(xScale).ticks(11).tickFormat(d3.format("d"))); // 11 ticks for ratings 0 to 10
+
+      // Add y-axis
+      svg.select("#y-axis-lines")
+        .call(d3.axisLeft(yScale));
+
+      // Add circles for data points
+      const circles = svg.select("#circles")
+        .selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", d => xScale(d.average_rating))
+        .attr("cy", d => yScale(groupedData.find(g => g.key === d.year).values.find(v => v.key === Math.floor(d.average_rating)).value))
+        .attr("r", 4)
+        .style("fill", "steelblue");
+
+      // Add chart title
+      svg.select("#line_chart_title")
+        .attr("x", width / 2)
+        .attr("y", -10)
+        .style("text-anchor", "middle")
+        .text("Board Game Ratings by Year");
+
+      // Add credit text
+      svg.select("#credit")
+        .attr("x", width)
+        .attr("y", height + margin.bottom - 10)
+        .style("text-anchor", "end")
+        .text("ndinapoli6");
+
+      // Add legend
+      const legend = svg.select("#legend")
+        .selectAll(".legend-entry")
+        .data(groupedData.map(d => d.key))
+        .enter()
+        .append("g")
+        .attr("class", "legend-entry")
+        .attr("transform", (d, i) => `translate(0, ${i * 20})`);
+
+      legend.append("circle")
+        .attr("cx", 10)
+        .attr("cy", 5)
+        .attr("r", 5)
+        .style("fill", (d, i) => colorScale(i));
+
+      legend.append("text")
+        .attr("x", 20)
+        .attr("y", 10)
+        .text(d => `Year ${d}`);
+
+      // Add x-axis label
+      svg.select("#x-axis-label")
+        .attr("x", width / 2)
+        .attr("y", height + margin.bottom)
+        .style("text-anchor", "middle")
+        .text("Rating");
+
+      // Add y-axis label
+      svg.select("#y-axis-label")
+        .attr("x", -margin.top)
+        .attr("y", -margin.left + 10)
+        .style("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .text("Count");
+    }).catch(function (error) {
+      console.log(error);
+    });
+
+  </script>
+
+</body>
+
+</html>

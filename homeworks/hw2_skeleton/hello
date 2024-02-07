@@ -1,0 +1,87 @@
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>Average Rating</th>
+      <th>Number of Games</th>
+      <th>Highest Number of Ratings</th>
+      <th>Average Playtime</th>
+    </tr>
+    <tr>
+      <th>Group</th>
+      <th>Category</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="5" valign="top">Solo not supported</th>
+      <th>Bluffing</th>
+      <td>7.12</td>
+      <td>47</td>
+      <td>46905</td>
+      <td>68.19</td>
+    </tr>
+    <tr>
+      <th>Deduction</th>
+      <td>7.28</td>
+      <td>19</td>
+      <td>62563</td>
+      <td>55.89</td>
+    </tr>
+    <tr>
+      <th>Economic</th>
+      <td>7.49</td>
+      <td>65</td>
+      <td>61157</td>
+      <td>105.92</td>
+    </tr>
+    <tr>
+      <th>Fighting</th>
+      <td>7.40</td>
+      <td>48</td>
+      <td>59211</td>
+      <td>103.75</td>
+    </tr>
+    <tr>
+      <th>Party Game</th>
+      <td>6.54</td>
+      <td>17</td>
+      <td>47812</td>
+      <td>36.18</td>
+    </tr>
+    <tr>
+      <th rowspan="4" valign="top">Solo supported</th>
+      <th>Deduction</th>
+      <td>7.84</td>
+      <td>3</td>
+      <td>16023</td>
+      <td>110.00</td>
+    </tr>
+    <tr>
+      <th>Economic</th>
+      <td>7.95</td>
+      <td>23</td>
+      <td>61557</td>
+      <td>126.52</td>
+    </tr>
+    <tr>
+      <th>Fighting</th>
+      <td>7.52</td>
+      <td>21</td>
+      <td>37075</td>
+      <td>113.33</td>
+    </tr>
+    <tr>
+      <th>Party Game</th>
+      <td>5.58</td>
+      <td>1</td>
+      <td>10913</td>
+      <td>20.00</td>
+    </tr>
+  </tbody>
+</table>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<head>
+<style>
+
+path.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+/* Styles for edges with value 0 (similar) */
+.similar {
+  stroke: #666;        /* Gray color */
+  stroke-width: 2;     /* Thick */
+  stroke-dasharray: none;  /* Solid line */
+}
+
+/* Styles for edges with value 1 (not similar) */
+.not-similar {
+  stroke: green;       /* Green color */
+  stroke-width: 1;     /* Thin */
+  stroke-dasharray: 5,5; /* Dashed line (5 units on, 5 units off) */
+}
+
+.pinned {
+  fill: yellow; /* Bright yellow color */
+  stroke: black; /* Adjust the stroke color */
+  stroke-width: 1.5px; /* Adjust the stroke width */
+}
+
+circle {
+  fill: #ccc;
+  stroke: #fff;
+  stroke: black;
+  stroke-width: 1.5px;
+}
+
+text {
+  fill: #000;
+  font: 10px sans-serif;
+  pointer-events: none;
+}
+
+</style>
+<meta charset="utf-8">
+<title></title>
+</head>
+
+<body>
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+
+  <script>
+    d3.dsv(",", "board_games.csv", function(d) {
+      return {
+        source: d.source,
+        target: d.target,
+        value: +d.value
+      }
+    }).then(function(data) {
+
+      var links = data;
+
+      var nodes = {};
+
+      // compute the distinct nodes from the links.
+      links.forEach(function(link) {
+          link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+          link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+      });
+
+      var width = 1200,
+          height = 700;
+
+      var force = d3.forceSimulation()
+          .nodes(d3.values(nodes))
+          .force("link", d3.forceLink(links).distance(100))
+          .force('center', d3.forceCenter(width / 2, height / 2))
+          .force("x", d3.forceX())
+          .force("y", d3.forceY())
+          .force("charge", d3.forceManyBody().strength(-250))
+          .alphaTarget(1)
+          .on("tick", tick);
+
+      var svg = d3.select("body").append("svg")
+          .attr("width", width)
+          .attr("height", height);
+
+      // add the links
+      var path = svg.append("g")
+          .selectAll("path")
+          .data(links)
+          .enter()
+          .append("path")
+          .attr("class", function(d) {
+            return "link " + (d.value === 0 ? "similar" : "not-similar");
+          })
+          .style("stroke", function(d) {
+            return d.value === 0 ? "#666" : "green";
+          })
+          .style("stroke-width", function(d) {
+            return d.value === 0 ? 2 : 1;
+          })
+          .style("stroke-dasharray", function(d) {
+            return d.value === 1 ? "5,5" : "none";
+          });
+
+      // define the nodes
+      var node = svg.selectAll(".node")
+          .data(force.nodes())
+          .enter().append("g")
+          .attr("class", "node")
+          .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended));
+
+      // add the nodes
+      node.append("circle")
+          .attr("id", function(d){
+             return (d.name ? d.name.replace(/\s+/g,'').toLowerCase() : '');
+          })
+          .attr("r", 5);
+
+      // Calculate node degrees
+      var nodeDegrees = {};
+
+      links.forEach(function(link) {
+          // Increment the degree for source node
+          nodeDegrees[link.source.name] = (nodeDegrees[link.source.name] || 0) + 1;
+          // Increment the degree for target node
+          nodeDegrees[link.target.name] = (nodeDegrees[link.target.name] || 0) + 1;
+      });
+
+      // Define the color scale using the specified gradient
+      var colorScale = d3.scaleLinear()
+        .domain([0, d3.max(Object.values(nodeDegrees))]) // Max degree as domain
+        .range(["rgb(239,243,255)", "rgb(189,215,231)", "rgb(107,174,214)", "rgb(33,113,181)"]); // Gradient colors
+
+      // Set the node fill colors based on the degree
+      node.selectAll("circle")
+        .style("fill", function(d) {
+          var degree = nodeDegrees[d.name] || 0; // Default to 0 if degree is undefined
+          return colorScale(degree);
+        });
+
+      // Define the scaling function (you can adjust the domain and range values)
+      var radiusScale = d3.scaleLinear()
+          .domain([0, d3.max(Object.values(nodeDegrees))]) // Adjust the domain as needed
+          .range([5, 50]); // Adjust the range to control the min and max node radii
+
+      // Set the node radii based on the degree
+      node.selectAll("circle")
+          .attr("r", function(d) {
+              return radiusScale(nodeDegrees[d.name] || 0); // Default to 0 if degree is undefined
+          });
+
+      // Create node labels
+      var labels = node.append("text")
+          .text(function(d) { return d.name; })
+          .attr("x", 8) // Adjust the label's x-position relative to the node
+          .attr("y", "-8")
+          .style("font-weight", "bold")
+          .style("font-size", "8px");
+
+      // Add the event listener for pinning/unpinning nodes
+      node.on("click", function(d) {
+          // Check if the node is already pinned
+          if (d.fx === null || d.fy === null) {
+              // Node is not pinned, so pin it
+              d.fx = d.x;
+              d.fy = d.y;
+          } else {
+              // Node is pinned, so unpin it
+              d.fx = null;
+              d.fy = null;
+          }
+
+          // Toggle the 'pinned' class to visually distinguish pinned nodes
+          d3.select(this).classed("pinned", function() {
+              return d.fx !== null && d.fy !== null;
+          });
+
+          // Add a double-click event listener to unpin (unfreeze) the node
+          d3.select(this).on("dblclick", function() {
+              d.fx = null;
+              d.fy = null;
+              d3.select(this).classed("pinned", false);
+          });
+      });
+
+      // add the curvy lines
+      function tick() {
+          path.attr("d", function(d) {
+              var dx = d.target.x - d.source.x,
+                  dy = d.target.y - d.source.y,
+                  dr = Math.sqrt(dx * dx + dy * dy);
+              return "M" +
+                  d.source.x + "," +
+                  d.source.y + "A" +
+                  dr + "," + dr + " 0 0,1 " +
+                  d.target.x + "," +
+                  d.target.y;
+          });
+
+          node.attr("transform", function(d) {
+              return "translate(" + d.x + "," + d.y + ")";
+          });
+      };
+
+      function dragstarted(d) {
+          if (!d3.event.active) force.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+      };
+
+      function dragged(d) {
+          d.fx = d3.event.x;
+          d.fy = d3.event.y;
+
+          // Update the label position as well
+          labels
+              .attr("x", function(l) { return l.x; })
+              .attr("y", function(l) { return l.y; });
+      };
+
+      function dragended(d) {
+          if (!d3.event.active) force.alphaTarget(0);
+          if (d.fixed == true) {
+              d.fx = d.x;
+              d.fy = d.y;
+          }
+          else {
+              d.fx = null;
+              d.fy = null;
+          }
+      };
+
+      // Append a <text> element for the credit
+      svg.append("text")
+        .attr("class", "credit")
+        .attr("id", "credit")
+        .attr("x", width - 10)
+        .attr("y", 10)
+        .style("text-anchor", "end")
+        .text("ndinapoli6");
+
+    }).catch(function(error) {
+      console.log(error);
+    });
+
+  </script>
+</body>
